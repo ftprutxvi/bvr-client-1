@@ -7,6 +7,7 @@
     <title>Your Cart — BVR Restaurant</title>
     <meta name="description" content="Review your order and checkout at BVR Bangaru Vakili Restaurant." />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -310,7 +311,6 @@
                         <label class="label">Table Number</label>
                         <select class="input-field" id="tableNum">
                             <option value="">Select table...</option>
-                            ${Array.from({length:20},(_,i)=>`<option value="${i+1}">Table ${i+1}</option>`).join('')}
                         </select>
                     </div>
 
@@ -383,13 +383,14 @@
     </div>
 
     <script>
+        // ========== SUPABASE INIT ==========
+        const SUPABASE_URL = 'https://feglxiibeuzsahoevzuu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlZ2x4aWliZXV6c2Fob2V2enV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTg3MzMsImV4cCI6MjA4ODc5NDczM30.GhrRdA0q4jFKDCJaw4CNFsz3tag4mZiVqvhx2NsaL9U';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         // ========== SHARED UTILITIES ==========
         function formatPrice(amount) { return '₹' + amount; }
-        function formatTime(isoString) {
-            try { return new Date(isoString).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
-            catch (e) { return isoString || '—'; }
-        }
-        function generateOrderId() { return 'BVR' + Math.floor(100000 + Math.random() * 900000); }
         function showToast(message, type = 'success') {
             const existing = document.getElementById('bvr-toast');
             if (existing) existing.remove();
@@ -409,10 +410,10 @@
         }
         function safeGetJSON(key, fallback) {
             try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-            catch (e) { console.warn('Failed to parse', key, e); return fallback; }
+            catch (e) { return fallback; }
         }
         function safeSetJSON(key, value) {
-            try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { console.error('Failed to save', key, e); }
+            try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { console.error(e); }
         }
 
         // ========== CART STATE ==========
@@ -420,7 +421,6 @@
         let orderType = 'dine-in';
 
         function initCart() {
-            // Re-read cart from localStorage (important for back-button/bfcache)
             cart = safeGetJSON('bvr_cart', []);
             if (cart.length === 0) {
                 document.getElementById('emptyState').style.display = 'block';
@@ -466,7 +466,6 @@
                 item.quantity += delta;
                 if (item.quantity <= 0) cart = cart.filter(c => c.id !== id);
                 safeSetJSON('bvr_cart', cart);
-                console.log('[BVR] Cart updated:', id, 'qty delta:', delta);
                 initCart();
             }
         }
@@ -476,7 +475,6 @@
             cart = cart.filter(c => c.id !== id);
             safeSetJSON('bvr_cart', cart);
             if (removed) showToast(`${removed.name} removed`, 'info');
-            console.log('[BVR] Item removed:', id);
             initCart();
         }
 
@@ -498,7 +496,6 @@
             document.getElementById('toggleDelivery').classList.toggle('active', type === 'delivery');
             document.getElementById('dineinFields').style.display = type === 'dinein' ? 'block' : 'none';
             document.getElementById('deliveryFields').style.display = type === 'delivery' ? 'block' : 'none';
-            // Clear validation errors on toggle
             clearFieldErrors();
             updateTotals();
         }
@@ -517,7 +514,26 @@
             }
         }
 
-        function handlePay() {
+        function showError(msg) {
+            const errEl = document.getElementById('formError');
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
+        }
+
+        function setPayButtonLoading(loading) {
+            const btn = document.getElementById('payBtn');
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;margin:0;border-width:2px;"></div> Processing...';
+            } else {
+                btn.disabled = false;
+                const total = cart.reduce((s, c) => s + c.quantity * c.price, 0) + (orderType === 'delivery' ? 30 : 0);
+                btn.innerHTML = `Pay <span id="payAmount">${formatPrice(total)}</span> via UPI →`;
+            }
+        }
+
+        // ========== PLACE ORDER (Supabase) ==========
+        async function handlePay() {
             clearFieldErrors();
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
@@ -533,70 +549,81 @@
             if (!name) { showError('Please enter your name'); highlightField('customerName'); return; }
             if (!phone || !/^\d{10}$/.test(phone)) { showError('Please enter a valid 10-digit phone number'); highlightField('customerPhone'); return; }
 
-            // Build order object
+            if (cart.length === 0) {
+                showToast('Your cart is empty', 'error');
+                return;
+            }
+
+            setPayButtonLoading(true);
+
             const subtotal = cart.reduce((s, c) => s + c.quantity * c.price, 0);
             const deliveryCharge = orderType === 'delivery' ? 30 : 0;
             const total = subtotal + deliveryCharge;
-            const timestamp = new Date().toISOString();
+            const orderCode = 'BVR' + Date.now().toString().slice(-6);
 
-            const orderObj = {
-                orderId: generateOrderId(),
-                type: orderType,
-                tableNumber: orderType === 'dine-in' ? document.getElementById('tableNum').value : '',
-                customerName: name,
-                customerPhone: phone,
-                deliveryAddress: orderType === 'delivery' ? document.getElementById('address').value.trim() : '',
-                landmark: orderType === 'delivery' ? document.getElementById('landmark').value.trim() : '',
-                items: cart.map(c => ({ ...c })),
-                subtotal: subtotal,
-                deliveryCharge: deliveryCharge,
-                total: total,
-                status: 'NEW',
-                paymentStatus: 'PAID',
-                timestamp: timestamp,
-                deliveryPerson: null,
-                cookStart: null
-            };
+            try {
+                // 1. Insert order into Supabase
+                const { data: order, error: orderErr } = await db
+                    .from('orders')
+                    .insert({
+                        order_code: orderCode,
+                        type: orderType,
+                        table_number: orderType === 'dine-in' ? document.getElementById('tableNum').value : null,
+                        customer_name: name,
+                        customer_phone: phone,
+                        delivery_address: orderType === 'delivery' ? document.getElementById('address').value.trim() : null,
+                        subtotal: subtotal,
+                        delivery_charge: deliveryCharge,
+                        total: total,
+                        status: 'NEW',
+                        payment_status: 'PAID'
+                    })
+                    .select()
+                    .single();
 
-            console.log('[BVR] Order created:', orderObj.orderId, 'Total:', total);
+                if (orderErr) throw orderErr;
 
-            // Save to localStorage
-            safeSetJSON('bvr_current_order', orderObj);
+                // 2. Insert order items
+                const orderItems = cart.map(item => ({
+                    order_id: order.id,
+                    item_name: item.name,
+                    quantity: item.quantity,
+                    price: item.price
+                }));
 
-            // Push to all orders array
-            const allOrders = safeGetJSON('bvr_all_orders', []);
-            allOrders.unshift(orderObj);
-            safeSetJSON('bvr_all_orders', allOrders);
+                const { error: itemsErr } = await db
+                    .from('order_items')
+                    .insert(orderItems);
 
-            // Clear cart
-            localStorage.removeItem('bvr_cart');
+                if (itemsErr) throw itemsErr;
 
-            // UI feedback
-            const btn = document.getElementById('payBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;margin:0;border-width:2px;"></div> Processing...';
+                // 3. Save order references to localStorage for status page
+                localStorage.setItem('bvr_order_id', order.id);
+                localStorage.setItem('bvr_order_code', orderCode);
+                localStorage.removeItem('bvr_cart');
 
-            // Show modal
-            const modal = document.getElementById('payModal');
-            modal.querySelector('h3').textContent = '✅ Payment Successful!';
-            modal.querySelector('p').textContent = 'Redirecting to order status...';
-            modal.classList.add('open');
+                // 4. Show success + redirect
+                const modal = document.getElementById('payModal');
+                modal.querySelector('h3').textContent = '✅ Payment Successful!';
+                modal.querySelector('p').textContent = 'Redirecting to order status...';
+                modal.classList.add('open');
 
-            showToast('Order placed successfully!');
+                showToast('Order placed successfully!');
+                console.log('[BVR] Order created in Supabase:', order.id, orderCode);
 
-            setTimeout(() => {
-                window.location.href = 'status.html';
-            }, 1500);
+                setTimeout(() => {
+                    window.location.href = 'status.html';
+                }, 1500);
+
+            } catch (err) {
+                console.error('[BVR] Order failed:', err);
+                showToast('Order failed. Check connection.', 'error');
+                setPayButtonLoading(false);
+            }
         }
 
-        function showError(msg) {
-            const errEl = document.getElementById('formError');
-            errEl.textContent = msg;
-            errEl.style.display = 'block';
-        }
-
+        // ========== INIT ==========
         initCart();
-        // Also restore cart when navigating back (bfcache/pageshow)
         window.addEventListener('pageshow', function (event) {
             initCart();
         });

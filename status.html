@@ -7,6 +7,7 @@
     <title>Order Status — BVR Restaurant</title>
     <meta name="description" content="Track your BVR restaurant order in real-time." />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -194,6 +195,46 @@
             font-family: 'Poppins', sans-serif;
             text-decoration: none
         }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #0f0700;
+            color: var(--text);
+            font-size: .95rem;
+            font-family: 'Poppins', sans-serif;
+            min-height: 48px;
+            outline: none;
+            transition: border-color .2s
+        }
+
+        .input-field:focus {
+            border-color: var(--gold)
+        }
+
+        .input-field::placeholder {
+            color: #a0784080
+        }
+
+        /* Skeleton loading */
+        .skeleton-box {
+            background: linear-gradient(90deg, #1a0e00 25%, #2a1800 50%, #1a0e00 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 12px;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
     </style>
 </head>
 
@@ -211,71 +252,48 @@
     <main style="padding:80px 16px 32px;max-width:600px;margin:auto;">
 
         <!-- ORDER INFO CARD -->
-        <div class="card" style="margin-bottom:16px;">
+        <div class="card" style="margin-bottom:16px;" id="orderInfoCard">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
                 <div>
-                    <h2 style="font-size:1.1rem;color:#d4a017;margin-bottom:4px;">Order #BVR2026001</h2>
+                    <h2 style="font-size:1.1rem;color:#d4a017;margin-bottom:4px;" id="orderTitle">Order #---</h2>
                     <span id="orderTypeBadge"
-                        style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:.75rem;font-weight:600;background:#d4a01720;color:#d4a017;">Dine-In</span>
+                        style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:.75rem;font-weight:600;background:#d4a01720;color:#d4a017;">Loading...</span>
                 </div>
                 <div style="text-align:right;">
-                    <div style="font-size:.8rem;color:var(--muted);" id="orderTime">12:30 PM</div>
-                    <div style="font-size:1rem;font-weight:700;color:var(--green);margin-top:4px;" id="orderTotal">₹360
+                    <div style="font-size:.8rem;color:var(--muted);" id="orderTime">--:-- --</div>
+                    <div style="font-size:1rem;font-weight:700;color:var(--green);margin-top:4px;" id="orderTotal">₹0
                         ✅</div>
                 </div>
             </div>
-            <div style="font-size:.85rem;color:var(--muted);" id="orderDetail">Table 4 · Paid via UPI</div>
+            <div style="font-size:.85rem;color:var(--muted);" id="orderDetail">Loading...</div>
         </div>
 
         <!-- STATUS TRACKER -->
         <div class="card" style="margin-bottom:16px;">
             <h2 style="font-size:1rem;color:#d4a017;margin-bottom:16px;">Live Status</h2>
             <div id="statusStepper">
-                <div class="step completed">
-                    <div class="step-line"></div>
-                    <div class="step-dot">✅</div>
-                    <div class="step-info">
-                        <div class="step-label">Order Placed</div>
-                        <div class="step-time" id="time0">12:30 PM</div>
+                <!-- Skeleton steps -->
+                <div style="display:flex;flex-direction:column;gap:20px;">
+                    <div style="display:flex;gap:14px;align-items:center;">
+                        <div class="skeleton-box" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton-box" style="height:14px;width:70%;margin-bottom:6px;"></div>
+                            <div class="skeleton-box" style="height:10px;width:40%;"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="step completed">
-                    <div class="step-line"></div>
-                    <div class="step-dot">✅</div>
-                    <div class="step-info">
-                        <div class="step-label">Confirmed by Restaurant</div>
-                        <div class="step-time" id="time1">12:32 PM</div>
+                    <div style="display:flex;gap:14px;align-items:center;">
+                        <div class="skeleton-box" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton-box" style="height:14px;width:80%;margin-bottom:6px;"></div>
+                            <div class="skeleton-box" style="height:10px;width:30%;"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="step active">
-                    <div class="step-line"></div>
-                    <div class="step-dot">🔥</div>
-                    <div class="step-info">
-                        <div class="step-label" style="color:#d4a017;">In Kitchen (Preparing)</div>
-                        <div class="step-time" id="time2">12:35 PM</div>
-                    </div>
-                </div>
-                <div class="step pending">
-                    <div class="step-line"></div>
-                    <div class="step-dot">⬜</div>
-                    <div class="step-info">
-                        <div class="step-label">Ready</div>
-                        <div class="step-time">—</div>
-                    </div>
-                </div>
-                <div class="step pending" id="step4">
-                    <div class="step-line"></div>
-                    <div class="step-dot">⬜</div>
-                    <div class="step-info">
-                        <div class="step-label" id="step4Label">Served at Table</div>
-                        <div class="step-time">—</div>
-                    </div>
-                </div>
-                <div class="step pending">
-                    <div class="step-dot">⬜</div>
-                    <div class="step-info">
-                        <div class="step-label">Completed</div>
-                        <div class="step-time">—</div>
+                    <div style="display:flex;gap:14px;align-items:center;">
+                        <div class="skeleton-box" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton-box" style="height:14px;width:60%;margin-bottom:6px;"></div>
+                            <div class="skeleton-box" style="height:10px;width:35%;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -289,10 +307,10 @@
                     style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#d4a017,#f5c842);display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
                     👤</div>
                 <div style="flex:1;">
-                    <div style="font-weight:600;font-size:.95rem;" id="deliveryName">Raju Kumar</div>
-                    <a id="deliveryPhone" href="tel:9876543210"
+                    <div style="font-weight:600;font-size:.95rem;" id="deliveryName">—</div>
+                    <a id="deliveryPhone" href="tel:0000000000"
                         style="color:#f5c842;font-size:1.2rem;font-weight:700;text-decoration:none;display:inline-block;min-height:44px;line-height:44px;">📞
-                        9876543210</a>
+                        —</a>
                 </div>
             </div>
             <p style="font-size:.75rem;color:var(--muted);margin-top:10px;">No live tracking — call delivery partner if
@@ -310,6 +328,20 @@
             </div>
         </div>
 
+        <!-- PHONE LOOKUP CARD -->
+        <div class="card" style="margin-bottom:16px;display:none;" id="phoneLookupCard">
+            <h2 style="font-size:1rem;color:#d4a017;margin-bottom:8px;">🔍 Find Your Order</h2>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">Lost your status? Enter the phone number
+                used to place your order.</p>
+            <div style="display:flex;gap:8px;">
+                <input type="tel" class="input-field" id="lookupPhone" placeholder="10-digit phone number"
+                    maxlength="10" style="flex:1;" />
+                <button class="btn-gold" onclick="lookupByPhone()"
+                    style="width:auto;padding:10px 20px;font-size:.85rem;">Find</button>
+            </div>
+            <p id="lookupError" style="color:var(--red);font-size:.8rem;margin-top:6px;display:none;"></p>
+        </div>
+
         <!-- AUTO REFRESH NOTE -->
         <p style="text-align:center;color:var(--muted);font-size:.75rem;">
             🔄 Status updates automatically every 10 seconds
@@ -325,19 +357,17 @@
     </main>
 
     <script>
+        // ========== SUPABASE INIT ==========
+        const SUPABASE_URL = 'https://feglxiibeuzsahoevzuu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlZ2x4aWliZXV6c2Fob2V2enV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTg3MzMsImV4cCI6MjA4ODc5NDczM30.GhrRdA0q4jFKDCJaw4CNFsz3tag4mZiVqvhx2NsaL9U';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         // ========== SHARED UTILITIES ==========
         function formatPrice(amount) { return '₹' + amount; }
         function formatTime(isoString) {
             try { return new Date(isoString).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
             catch (e) { return isoString || '—'; }
-        }
-        function timeAgo(isoString) {
-            try {
-                const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
-                if (diff < 60) return diff + 's ago';
-                if (diff < 3600) return Math.floor(diff / 60) + ' mins ago';
-                return Math.floor(diff / 3600) + ' hrs ago';
-            } catch (e) { return '—'; }
         }
         function showToast(message, type = 'success') {
             const existing = document.getElementById('bvr-toast');
@@ -356,13 +386,6 @@
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
         }
-        function safeGetJSON(key, fallback) {
-            try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-            catch (e) { return fallback; }
-        }
-        function safeSetJSON(key, value) {
-            try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { console.error(e); }
-        }
 
         // ========== STATUS CONFIG ==========
         const STATUS_STEPS_DINEIN = ['NEW', 'CONFIRMED', 'IN_KITCHEN', 'READY', 'SERVED', 'COMPLETED'];
@@ -372,63 +395,90 @@
             IN_KITCHEN: 'In Kitchen (Preparing)', READY: 'Food Ready',
             OUT_FOR_DELIVERY: 'Out for Delivery', SERVED: 'Served at Table', COMPLETED: 'Completed'
         };
-        const STATUS_ICONS = {
-            completed: '✅', active: '🔥', pending: '⬜'
-        };
+        const STATUS_ICONS = { completed: '✅', active: '🔥', pending: '⬜' };
 
+        let lastStatus = null;
         let lastRefresh = Date.now();
 
-        function loadOrder() {
-            return safeGetJSON('bvr_current_order', null);
-        }
+        // ========== LOAD ORDER (Supabase) ==========
+        async function loadStatus() {
+            const orderId = localStorage.getItem('bvr_order_id');
 
-        function renderStatus() {
-            const order = loadOrder();
-            if (!order) {
-                document.querySelector('main').innerHTML = `
-                    <div style="text-align:center;padding:80px 20px;">
-                        <div style="font-size:3rem;margin-bottom:16px;">📋</div>
-                        <h2 style="color:#d4a017;font-size:1.3rem;margin-bottom:8px;">No active order found</h2>
-                        <p style="color:#a07840;margin-bottom:24px;font-size:.9rem;">Place an order from the menu</p>
-                        <a href="menu.html" class="btn-gold" style="width:auto;display:inline-flex;">🍽️ Go to Menu</a>
-                    </div>`;
+            if (!orderId) {
+                showPhoneLookup();
                 return;
             }
 
-            const steps = order.type === 'delivery' ? STATUS_STEPS_DELIVERY : STATUS_STEPS_DINEIN;
-            const currentIdx = steps.indexOf(order.status);
+            try {
+                const { data: order, error } = await db
+                    .from('orders')
+                    .select('*, order_items(*), delivery_people(name, phone)')
+                    .eq('id', orderId)
+                    .single();
 
-            // Update order info card
-            const titleEl = document.querySelector('main .card h2');
-            if (titleEl) titleEl.textContent = 'Order #' + order.orderId;
+                if (error || !order) {
+                    console.error('[BVR] Order fetch error:', error);
+                    showToast('Could not load order', 'error');
+                    showPhoneLookup();
+                    return;
+                }
+
+                renderOrderInfo(order);
+                renderStatusTracker(order);
+                renderItemsSummary(order.order_items || []);
+
+                // Delivery person card
+                if (order.status === 'OUT_FOR_DELIVERY' && order.delivery_people) {
+                    showDeliveryCard(order.delivery_people.name, order.delivery_people.phone);
+                } else {
+                    document.getElementById('deliveryCard').style.display = 'none';
+                }
+
+                lastStatus = order.status;
+                lastRefresh = Date.now();
+                console.log('[BVR] Status rendered:', order.status);
+
+            } catch (err) {
+                console.error('[BVR] Network error:', err);
+                showToast('No internet. Retrying in 5s...', 'error');
+                setTimeout(loadStatus, 5000);
+            }
+        }
+
+        function renderOrderInfo(order) {
+            document.getElementById('orderTitle').textContent = 'Order #' + order.order_code;
 
             const badge = document.getElementById('orderTypeBadge');
             if (order.type === 'delivery') {
                 badge.textContent = '🛵 Delivery';
                 badge.style.background = '#22c55e20'; badge.style.color = '#22c55e';
             } else {
-                badge.textContent = '🪑 Dine-In · Table ' + (order.tableNumber || '?');
+                badge.textContent = '🪑 Dine-In · Table ' + (order.table_number || '?');
+                badge.style.background = '#d4a01720'; badge.style.color = '#d4a017';
             }
 
-            document.getElementById('orderTime').textContent = formatTime(order.timestamp);
+            document.getElementById('orderTime').textContent = formatTime(order.created_at);
             document.getElementById('orderTotal').textContent = formatPrice(order.total) + ' ✅';
             document.getElementById('orderDetail').textContent =
                 order.type === 'delivery'
-                    ? (order.deliveryAddress || 'Delivery') + ' · Paid via UPI'
-                    : 'Table ' + (order.tableNumber || '?') + ' · Paid via UPI';
+                    ? (order.delivery_address || 'Delivery') + ' · Paid via UPI'
+                    : 'Table ' + (order.table_number || '?') + ' · Paid via UPI';
+        }
 
-            // Render stepper
+        function renderStatusTracker(order) {
+            const steps = order.type === 'delivery' ? STATUS_STEPS_DELIVERY : STATUS_STEPS_DINEIN;
+            const currentIdx = steps.indexOf(order.status);
+
             const stepper = document.getElementById('statusStepper');
             stepper.innerHTML = steps.map((step, i) => {
                 let cls = 'pending', icon = STATUS_ICONS.pending, timeStr = '—';
                 if (i < currentIdx) {
                     cls = 'completed'; icon = STATUS_ICONS.completed;
-                    // Simulate past timestamps
-                    const t = new Date(new Date(order.timestamp).getTime() + i * 120000);
+                    const t = new Date(new Date(order.created_at).getTime() + i * 120000);
                     timeStr = formatTime(t.toISOString());
                 } else if (i === currentIdx) {
                     cls = 'active'; icon = STATUS_ICONS.active;
-                    timeStr = i === 0 ? formatTime(order.timestamp) : 'In progress';
+                    timeStr = i === 0 ? formatTime(order.created_at) : 'In progress';
                 }
                 const isLast = i === steps.length - 1;
                 const labelStyle = cls === 'active' ? ' style="color:#d4a017;"' : '';
@@ -442,77 +492,82 @@
                         </div>
                     </div>`;
             }).join('');
+        }
 
-            // Delivery person card
-            const deliveryCard = document.getElementById('deliveryCard');
-            if (order.status === 'OUT_FOR_DELIVERY' && order.deliveryPerson) {
-                deliveryCard.style.display = 'block';
-                const dp = typeof order.deliveryPerson === 'object' ? order.deliveryPerson : { name: order.deliveryPerson, phone: '9876543210' };
-                document.getElementById('deliveryName').textContent = dp.name;
-                const phoneEl = document.getElementById('deliveryPhone');
-                phoneEl.textContent = '📞 ' + dp.phone;
-                phoneEl.href = 'tel:' + dp.phone;
-            } else {
-                deliveryCard.style.display = 'none';
-            }
-
-            // Update step4 label
-            const step4Label = document.getElementById('step4Label');
-            if (step4Label) {
-                step4Label.textContent = order.type === 'delivery' ? 'Out for Delivery' : 'Served at Table';
-            }
-
-            // Items list
+        function renderItemsSummary(items) {
             const itemsEl = document.getElementById('itemsList');
-            if (order.items && order.items.length > 0) {
-                itemsEl.innerHTML = order.items.map(i => `
+            if (items && items.length > 0) {
+                itemsEl.innerHTML = items.map(i => `
                     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #d4a01710;font-size:.85rem;">
-                        <span>${i.name} × ${i.quantity}</span>
+                        <span>${i.item_name} × ${i.quantity}</span>
                         <span style="color:var(--bright-gold);">${formatPrice(i.price * i.quantity)}</span>
                     </div>
                 `).join('');
-            }
-
-            lastRefresh = Date.now();
-            console.log('[BVR] Status rendered:', order.status);
-        }
-
-        // ========== SIMULATE BUTTON (Dev Only) ==========
-        function addSimulateButton() {
-            const main = document.querySelector('main');
-            const simDiv = document.createElement('div');
-            simDiv.style.cssText = 'text-align:center;margin-top:20px;';
-            simDiv.innerHTML = `
-                <button onclick="simulateNext()" style="background:#1a0e00;border:1px dashed #a07840;color:#a07840;padding:8px 16px;border-radius:9999px;font-size:.75rem;cursor:pointer;font-family:'Poppins',sans-serif;">
-                    ⚡ Simulate Next Status (Dev Only)
-                </button>
-                <p style="font-size:.7rem;color:#a0784060;margin-top:6px;">Last updated: <span id="lastUpdateCounter">0s ago</span></p>`;
-            main.appendChild(simDiv);
-        }
-
-        function simulateNext() {
-            const order = loadOrder();
-            if (!order) return;
-            const steps = order.type === 'delivery' ? STATUS_STEPS_DELIVERY : STATUS_STEPS_DINEIN;
-            const currentIdx = steps.indexOf(order.status);
-            if (currentIdx < steps.length - 1) {
-                order.status = steps[currentIdx + 1];
-                // Add delivery person when going to OUT_FOR_DELIVERY
-                if (order.status === 'OUT_FOR_DELIVERY') {
-                    order.deliveryPerson = { name: 'Raju Kumar', phone: '9876543210' };
-                }
-                safeSetJSON('bvr_current_order', order);
-                // Also update in bvr_all_orders
-                const allOrders = safeGetJSON('bvr_all_orders', []);
-                const idx = allOrders.findIndex(o => o.orderId === order.orderId);
-                if (idx >= 0) { allOrders[idx] = order; safeSetJSON('bvr_all_orders', allOrders); }
-                showToast('Status → ' + STATUS_LABELS[order.status]);
-                renderStatus();
-                console.log('[BVR] Simulated status advance to:', order.status);
             } else {
-                showToast('Order already completed!', 'info');
+                itemsEl.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No items found</p>';
             }
         }
+
+        function showDeliveryCard(name, phone) {
+            const card = document.getElementById('deliveryCard');
+            card.style.display = 'block';
+            document.getElementById('deliveryName').textContent = name;
+            const phoneEl = document.getElementById('deliveryPhone');
+            phoneEl.textContent = '📞 ' + phone;
+            phoneEl.href = 'tel:' + phone;
+        }
+
+        // ========== PHONE LOOKUP ==========
+        function showPhoneLookup() {
+            document.getElementById('phoneLookupCard').style.display = 'block';
+            // Show empty state for the main cards
+            document.getElementById('orderInfoCard').style.display = 'none';
+        }
+
+        async function lookupByPhone() {
+            const phone = document.getElementById('lookupPhone').value.trim();
+            const errorEl = document.getElementById('lookupError');
+            errorEl.style.display = 'none';
+
+            if (!phone || !/^\d{10}$/.test(phone)) {
+                errorEl.textContent = 'Please enter a valid 10-digit phone number';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                const { data, error } = await db
+                    .from('orders')
+                    .select('id, order_code')
+                    .eq('customer_phone', phone)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (error || !data) {
+                    errorEl.textContent = 'No order found for this number';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                localStorage.setItem('bvr_order_id', data.id);
+                localStorage.setItem('bvr_order_code', data.order_code);
+                document.getElementById('phoneLookupCard').style.display = 'none';
+                document.getElementById('orderInfoCard').style.display = 'block';
+                showToast('Order found! Loading status...');
+                loadStatus();
+
+            } catch (err) {
+                console.error('[BVR] Lookup error:', err);
+                errorEl.textContent = 'Network error. Please try again.';
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // Allow Enter key on lookup input
+        document.getElementById('lookupPhone').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') lookupByPhone();
+        });
 
         function toggleItems() {
             const body = document.getElementById('collapseBody');
@@ -522,24 +577,36 @@
         }
 
         // ========== AUTO REFRESH ==========
-        setInterval(() => {
-            renderStatus();
-            const counter = document.getElementById('lastUpdateCounter');
-            if (counter) counter.textContent = '0s ago';
+        setInterval(async () => {
+            const orderId = localStorage.getItem('bvr_order_id');
+            if (!orderId) return;
+
+            try {
+                const { data } = await db
+                    .from('orders')
+                    .select('status')
+                    .eq('id', orderId)
+                    .single();
+
+                if (data && data.status !== lastStatus) {
+                    loadStatus(); // full re-render only if status changed
+                }
+            } catch (e) {
+                // silent fail on auto-refresh
+            }
+
+            lastRefresh = Date.now();
         }, 10000);
 
         // Update "last updated" counter
         setInterval(() => {
-            const counter = document.getElementById('lastUpdateCounter');
-            if (counter) {
-                const secs = Math.floor((Date.now() - lastRefresh) / 1000);
-                counter.textContent = secs + 's ago';
-            }
+            // No counter UI in this version, but kept for future use
         }, 1000);
 
         // Init
-        renderStatus();
-        addSimulateButton();
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStatus();
+        });
         console.log('[BVR] Status page loaded');
     </script>
 </body>

@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kitchen Dashboard — BVR Restaurant</title>
-    <meta name="description" content="BVR Restaurant kitchen dashboard for order preparation." />
+    <title>BVR Kitchen Dashboard</title>
+    <meta name="description" content="Kitchen dashboard for BVR Restaurant. Manage cooking orders." />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -60,54 +61,7 @@
             border: 1px solid var(--border);
             border-radius: 1rem;
             padding: 16px;
-            transition: all .2s ease
-        }
-
-        .card-ready {
-            border-color: #22c55e40;
-            background: #0f1a0a
-        }
-
-        /* Password overlay */
-        .pw-overlay {
-            position: fixed;
-            inset: 0;
-            background: var(--bg);
-            z-index: 300;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px
-        }
-
-        .pw-box {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 1.5rem;
-            padding: 40px 30px;
-            text-align: center;
-            max-width: 340px;
-            width: 100%
-        }
-
-        .pw-input {
-            width: 100%;
-            padding: 14px 18px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: #0f0700;
-            color: var(--text);
-            font-size: 1rem;
-            font-family: 'Poppins', sans-serif;
-            min-height: 48px;
-            outline: none;
-            text-align: center;
-            letter-spacing: 4px;
-            transition: border-color .2s
-        }
-
-        .pw-input:focus {
-            border-color: var(--gold)
+            margin-bottom: 12px
         }
 
         .btn-gold {
@@ -126,7 +80,6 @@
             gap: 8px;
             font-size: 1rem;
             font-family: 'Poppins', sans-serif;
-            text-decoration: none;
             width: 100%
         }
 
@@ -135,40 +88,92 @@
             transform: translateY(-2px)
         }
 
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #0f0700;
+            color: var(--text);
+            font-size: .95rem;
+            font-family: 'Poppins', sans-serif;
+            min-height: 48px;
+            outline: none;
+            transition: border-color .2s
+        }
+
+        .input-field:focus {
+            border-color: var(--gold)
+        }
+
+        .input-field::placeholder {
+            color: #a0784080
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center
+        }
+
+        .stat-num {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--bright-gold);
+            font-family: 'Playfair Display', serif
+        }
+
+        .stat-label {
+            font-size: .7rem;
+            color: var(--muted)
+        }
+
         /* Action buttons */
         .act-btn {
-            padding: 10px 20px;
+            padding: 10px 18px;
             border-radius: 9999px;
             border: none;
-            font-size: .85rem;
+            font-size: .82rem;
             font-weight: 600;
             cursor: pointer;
             transition: all .2s;
+            min-height: 40px;
             font-family: 'Poppins', sans-serif;
-            min-height: 44px;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px
+            width: 100%
         }
 
         .act-cook {
-            background: linear-gradient(135deg, #f97316, #fbbf24);
-            color: #1a0e00
-        }
-
-        .act-cook:hover {
-            box-shadow: 0 0 15px #f9731660
+            background: linear-gradient(135deg, #f97316, #fb923c);
+            color: #fff
         }
 
         .act-ready {
             background: linear-gradient(135deg, #22c55e, #4ade80);
-            color: #0f1a0a
+            color: #fff
         }
 
-        .act-ready:hover {
-            box-shadow: 0 0 15px #22c55e60
+        /* Timer */
+        .kitchen-timer {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--bright-gold);
+            font-family: 'Playfair Display', serif;
+            text-align: center;
+            padding: 4px 0
+        }
+
+        .timer-warning {
+            color: var(--red) !important
         }
 
         .badge {
@@ -176,95 +181,47 @@
             padding: 3px 10px;
             border-radius: 9999px;
             font-size: .7rem;
-            font-weight: 600
+            font-weight: 600;
+            white-space: nowrap
         }
 
-        .badge-dinein {
-            background: #d4a01720;
-            color: #d4a017
-        }
-
-        .badge-delivery {
-            background: #22c55e20;
-            color: #22c55e
-        }
-
-        /* Stats */
-        .stats-row {
+        /* Password overlay */
+        .password-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .9);
+            z-index: 200;
             display: flex;
-            gap: 12px;
-            margin-bottom: 20px
+            align-items: center;
+            justify-content: center;
+            padding: 20px
         }
 
-        .stat-card {
-            flex: 1;
+        .password-box {
             background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 14px;
+            border-radius: 1.5rem;
+            padding: 32px;
+            max-width: 360px;
+            width: 100%;
             text-align: center
         }
 
-        .stat-num {
-            font-size: 1.5rem;
-            font-weight: 700;
-            font-family: 'Playfair Display', serif
+        /* Skeleton loading */
+        .skeleton-box {
+            background: linear-gradient(90deg, #1a0e00 25%, #2a1800 50%, #1a0e00 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 12px;
         }
 
-        .stat-label {
-            font-size: .7rem;
-            color: var(--muted);
-            margin-top: 2px
-        }
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
 
-        /* Shake animation */
-        @keyframes shake {
-
-            0%,
             100% {
-                transform: translateX(0)
-            }
-
-            20%,
-            60% {
-                transform: translateX(-8px)
-            }
-
-            40%,
-            80% {
-                transform: translateX(8px)
-            }
-        }
-
-        .shake {
-            animation: shake .4s ease
-        }
-
-        /* Timer */
-        .timer {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 9999px;
-            background: #f9731620;
-            color: #f97316;
-            font-size: .75rem;
-            font-weight: 600
-        }
-
-        /* Desktop columns */
-        @media(min-width:768px) {
-            .kitchen-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px
-            }
-        }
-
-        @media(min-width:1024px) {
-            .kitchen-grid {
-                grid-template-columns: repeat(3, 1fr)
+                background-position: 200% 0;
             }
         }
     </style>
@@ -273,67 +230,85 @@
 <body>
 
     <!-- PASSWORD OVERLAY -->
-    <div class="pw-overlay" id="pwOverlay">
-        <div class="pw-box" id="pwBox">
-            <div style="font-size:3rem;margin-bottom:16px;">👨‍🍳</div>
-            <h2 style="color:#d4a017;font-size:1.3rem;margin-bottom:6px;">Kitchen Access</h2>
-            <p style="color:var(--muted);font-size:.85rem;margin-bottom:24px;">Enter password to continue</p>
-            <input type="password" class="pw-input" id="pwInput" placeholder="••••••" autofocus />
-            <p id="pwError" style="color:var(--red);font-size:.8rem;margin-top:8px;min-height:20px;"></p>
-            <button class="btn-gold" style="margin-top:12px;" onclick="checkPassword()">Enter Kitchen</button>
+    <div class="password-overlay" id="passwordOverlay">
+        <div class="password-box">
+            <div style="font-size:2.5rem;margin-bottom:12px;">👨‍🍳</div>
+            <h2 style="color:var(--gold);margin-bottom:20px;font-size:1.3rem;">Kitchen Access</h2>
+            <input type="password" class="input-field" id="kitchenPassword" placeholder="Enter kitchen password"
+                style="text-align:center;margin-bottom:12px;" />
+            <button class="btn-gold" onclick="checkPassword()">🔓 Enter Kitchen</button>
+            <p id="passErr" style="color:var(--red);font-size:.8rem;margin-top:8px;display:none;"></p>
         </div>
     </div>
 
     <!-- NAVBAR -->
     <nav class="navbar">
         <div style="max-width:1200px;margin:auto;display:flex;align-items:center;justify-content:space-between;">
-            <h1 style="font-size:1.05rem;color:#d4a017;display:flex;align-items:center;gap:8px;">
-                👨‍🍳 BVR Kitchen
-            </h1>
-            <a href="index.html" style="color:var(--muted);text-decoration:none;font-size:.85rem;">Exit</a>
+            <h1 style="font-size:1.15rem;color:#d4a017;">👨‍🍳 Kitchen</h1>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:.75rem;color:var(--muted);" id="lastUpdate">Updated just now</span>
+                <a href="#" onclick="lockKitchen()" style="color:var(--muted);text-decoration:none;font-size:.85rem;">🔒
+                    Lock</a>
+            </div>
         </div>
     </nav>
 
-    <main style="padding:76px 16px 32px;max-width:1100px;margin:auto;">
+    <main style="padding:80px 16px 32px;max-width:800px;margin:auto;">
 
-        <!-- AUTO REFRESH NOTE -->
-        <p style="text-align:center;color:var(--muted);font-size:.75rem;margin-bottom:16px;">
-            🔄 Orders refresh automatically · <span id="clock"></span>
-        </p>
-
-        <!-- STATS ROW -->
-        <div class="stats-row">
+        <!-- STATS -->
+        <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-num" style="color:#f5c842;" id="kPending">2</div>
-                <div class="stat-label">Pending</div>
+                <div class="stat-num" id="countQueue">0</div>
+                <div class="stat-label">In Queue</div>
             </div>
             <div class="stat-card">
-                <div class="stat-num" style="color:#f97316;" id="kProgress">1</div>
-                <div class="stat-label">In Progress</div>
+                <div class="stat-num" id="countCooking">0</div>
+                <div class="stat-label">Cooking</div>
             </div>
             <div class="stat-card">
-                <div class="stat-num" style="color:#22c55e;" id="kReady">1</div>
+                <div class="stat-num" id="countReady">0</div>
                 <div class="stat-label">Ready</div>
             </div>
         </div>
 
-        <!-- ORDERS GRID -->
-        <div class="kitchen-grid" id="kitchenGrid"></div>
+        <!-- KITCHEN ORDERS -->
+        <div id="kitchenOrders">
+            <!-- Skeleton cards -->
+            <div class="card">
+                <div class="skeleton-box" style="height:20px;width:40%;margin-bottom:10px;"></div>
+                <div class="skeleton-box" style="height:14px;width:80%;margin-bottom:6px;"></div>
+                <div class="skeleton-box" style="height:40px;width:100%;"></div>
+            </div>
+            <div class="card">
+                <div class="skeleton-box" style="height:20px;width:40%;margin-bottom:10px;"></div>
+                <div class="skeleton-box" style="height:14px;width:80%;margin-bottom:6px;"></div>
+                <div class="skeleton-box" style="height:40px;width:100%;"></div>
+            </div>
+        </div>
+
+        <!-- AUTO REFRESH NOTE -->
+        <p style="text-align:center;color:var(--muted);font-size:.75rem;margin-top:16px;">
+            🔄 Auto-refreshes every 10 seconds · Timers tick every second
+        </p>
+
     </main>
 
     <script>
+        // ========== SUPABASE INIT ==========
+        const SUPABASE_URL = 'https://feglxiibeuzsahoevzuu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlZ2x4aWliZXV6c2Fob2V2enV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTg3MzMsImV4cCI6MjA4ODc5NDczM30.GhrRdA0q4jFKDCJaw4CNFsz3tag4mZiVqvhx2NsaL9U';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         // ========== SHARED UTILITIES ==========
         function formatPrice(amount) { return '₹' + amount; }
-        function formatTime(isoString) {
-            try { return new Date(isoString).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
-            catch (e) { return isoString || '—'; }
-        }
         function timeAgo(isoString) {
             try {
                 const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
                 if (diff < 60) return diff + 's ago';
                 if (diff < 3600) return Math.floor(diff / 60) + ' mins ago';
-                return Math.floor(diff / 3600) + ' hrs ago';
+                if (diff < 86400) return Math.floor(diff / 3600) + ' hrs ago';
+                return Math.floor(diff / 86400) + ' days ago';
             } catch (e) { return '—'; }
         }
         function showToast(message, type = 'success') {
@@ -353,255 +328,224 @@
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
         }
-        function safeGetJSON(key, fallback) {
-            try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-            catch (e) { return fallback; }
-        }
-        function safeSetJSON(key, value) {
-            try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { console.error(e); }
-        }
 
-        // ========== PASSWORD ==========
+        // ========== AUTH ==========
         function checkPassword() {
-            const input = document.getElementById('pwInput').value;
-            if (input === 'bvr123') {
+            const pw = document.getElementById('kitchenPassword').value;
+            const errEl = document.getElementById('passErr');
+            errEl.style.display = 'none';
+
+            if (pw === 'bvr123') {
                 localStorage.setItem('bvr_kitchen_auth', 'true');
-                document.getElementById('pwOverlay').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('pwOverlay').style.display = 'none';
-                }, 300);
-                loadKitchen();
-                showToast('Kitchen unlocked! 🔥');
-                console.log('[BVR] Kitchen authenticated');
+                document.getElementById('passwordOverlay').style.display = 'none';
+                showToast('Welcome to Kitchen! 👨‍🍳');
+                loadKitchenOrders();
             } else {
-                const box = document.getElementById('pwBox');
-                const err = document.getElementById('pwError');
-                box.classList.remove('shake');
-                void box.offsetWidth; // reflow
-                box.classList.add('shake');
-                err.textContent = '❌ Wrong password. Ask manager.';
-                document.getElementById('pwInput').value = '';
-                document.getElementById('pwInput').focus();
+                errEl.textContent = 'Wrong password. Try again.';
+                errEl.style.display = 'block';
             }
         }
 
-        // Allow Enter key
-        document.getElementById('pwInput').addEventListener('keydown', (e) => {
+        function lockKitchen() {
+            localStorage.removeItem('bvr_kitchen_auth');
+            document.getElementById('passwordOverlay').style.display = 'flex';
+        }
+
+        // Enter key on password field
+        document.getElementById('kitchenPassword').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') checkPassword();
         });
 
-        // Check if already authed
-        function checkKitchenAuth() {
-            if (localStorage.getItem('bvr_kitchen_auth') === 'true') {
-                document.getElementById('pwOverlay').style.display = 'none';
-                loadKitchen();
-            } else {
-                document.getElementById('pwOverlay').style.display = 'flex';
-                document.getElementById('pwOverlay').style.transition = 'opacity 0.3s ease';
+        // ========== KITCHEN ORDERS ==========
+        let kitchenOrders = [];
+        let lastKitchenState = '';
+
+        async function loadKitchenOrders() {
+            try {
+                const { data: orders, error } = await db
+                    .from('orders')
+                    .select('*, order_items(*)')
+                    .in('status', ['CONFIRMED', 'IN_KITCHEN'])
+                    .order('created_at', { ascending: true });
+
+                if (error) {
+                    showToast('Failed to load orders', 'error');
+                    console.error('[BVR] Kitchen fetch error:', error);
+                    return;
+                }
+
+                kitchenOrders = orders || [];
+
+                // Smart diff: only re-render if state changed
+                const stateKey = kitchenOrders.map(o => o.id + ':' + o.status).join(',');
+                if (stateKey === lastKitchenState) {
+                    updateTimers();
+                    updateStats();
+                    return;
+                }
+
+                lastKitchenState = stateKey;
+                renderKitchenOrders();
+                updateStats();
+                updateTimers();
+
+                document.getElementById('lastUpdate').textContent = 'Updated just now';
+                console.log('[BVR] Kitchen orders loaded:', kitchenOrders.length);
+
+            } catch (err) {
+                console.error('[BVR] Network error:', err);
+                showToast('No internet. Retrying in 5s...', 'error');
+                setTimeout(loadKitchenOrders, 5000);
             }
         }
 
-        // ========== LOCK KITCHEN ==========
-        function lockKitchen() {
-            localStorage.removeItem('bvr_kitchen_auth');
-            document.getElementById('pwOverlay').style.display = 'flex';
-            document.getElementById('pwOverlay').style.opacity = '1';
-            document.getElementById('pwInput').value = '';
-            document.getElementById('pwError').textContent = '';
-            document.getElementById('pwInput').focus();
-            showToast('Kitchen locked 🔒', 'info');
-            console.log('[BVR] Kitchen locked');
-        }
-
-        // Override the Exit link to be a Lock button
-        const exitLink = document.querySelector('a[href="index.html"]');
-        if (exitLink) {
-            exitLink.textContent = '🔒 Lock';
-            exitLink.href = '#';
-            exitLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                lockKitchen();
-            });
-        }
-
-        // ========== KITCHEN ORDERS ==========
-        let allOrders = [];
-        let renderedOrderSnapshot = ''; // tracks IDs+statuses to detect changes
-
-        function loadKitchen() {
-            allOrders = safeGetJSON('bvr_all_orders', []);
-            renderKitchen();
-        }
-
-        function getKitchenOrders() {
-            // Show CONFIRMED, IN_KITCHEN, and READY (ready for 2 mins)
-            return allOrders.filter(o =>
-                o.status === 'CONFIRMED' || o.status === 'IN_KITCHEN' || o.status === 'READY'
-            ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); // oldest first = priority
-        }
-
-        function renderKitchen() {
-            const grid = document.getElementById('kitchenGrid');
-            const kitchenOrders = getKitchenOrders();
+        function renderKitchenOrders() {
+            const container = document.getElementById('kitchenOrders');
 
             if (kitchenOrders.length === 0) {
-                grid.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);grid-column:1/-1;">
-                    <div style="font-size:3rem;margin-bottom:12px;">✅</div>
-                    <p style="font-size:1rem;">No active orders. Kitchen is clear!</p>
-                </div>`;
-            } else {
-                grid.innerHTML = kitchenOrders.map(o => {
-                    const typeBadge = o.type === 'dine-in'
-                        ? `<span class="badge badge-dinein">🪑 Table ${o.tableNumber}</span>`
-                        : `<span class="badge badge-delivery">🛵 Delivery</span>`;
-
-                    let statusSection = '';
-                    let cardClass = 'card';
-
-                    if (o.status === 'CONFIRMED') {
-                        statusSection = `
-                            <button class="act-btn act-cook" onclick="startCooking('${o.orderId}')">
-                                🔥 Start Cooking
-                            </button>`;
-                    } else if (o.status === 'IN_KITCHEN') {
-                        statusSection = `
-                            <div style="margin-bottom:10px;">
-                                <span class="timer" id="timer_${o.orderId}">⏱ 0:00</span>
-                            </div>
-                            <button class="act-btn act-ready" onclick="markReady('${o.orderId}')">
-                                ✅ Mark Ready
-                            </button>`;
-                    } else if (o.status === 'READY') {
-                        cardClass = 'card card-ready';
-                        const cookStart = o.cookStart;
-                        let doneTime = '';
-                        if (cookStart) {
-                            const mins = Math.floor((Date.now() - cookStart) / 60000);
-                            doneTime = ` · Done in ${mins} min${mins !== 1 ? 's' : ''}`;
-                        }
-                        statusSection = `
-                            <div style="text-align:center;padding:8px;background:#22c55e20;border-radius:12px;">
-                                <span style="color:#22c55e;font-weight:600;font-size:.9rem;">✅ Ready for pickup/delivery${doneTime}</span>
-                            </div>`;
-                    }
-
-                    return `
-                        <div class="${cardClass}" style="margin-bottom:0;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-                                <div>
-                                    <div style="font-weight:600;color:var(--text);font-size:.9rem;">#${o.orderId}</div>
-                                    <div style="font-size:.75rem;color:var(--muted);">${formatTime(o.timestamp)} · ${timeAgo(o.timestamp)}</div>
-                                </div>
-                                ${typeBadge}
-                            </div>
-                            <div style="margin-bottom:10px;">
-                                ${o.items.map(i => `
-                                    <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.85rem;border-bottom:1px solid #d4a01710;">
-                                        <span>${i.name}</span>
-                                        <span style="color:var(--bright-gold);font-weight:600;">×${i.quantity}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            ${statusSection}
-                        </div>`;
-                }).join('');
+                container.innerHTML = `
+                    <div class="card" style="text-align:center;padding:40px 20px;">
+                        <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+                        <h3 style="color:var(--green);font-size:1.1rem;margin-bottom:8px;">All caught up!</h3>
+                        <p style="color:var(--muted);font-size:.85rem;">No orders in queue. Waiting for new orders...</p>
+                    </div>`;
+                return;
             }
 
-            updateStats();
-            updateTimers();
-            // Update snapshot after render
-            renderedOrderSnapshot = getKitchenOrders().map(o => o.orderId + ':' + o.status).join(',');
+            container.innerHTML = kitchenOrders.map(o => {
+                const items = (o.order_items || []).map(i =>
+                    `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.82rem;">
+                        <span>${i.item_name}</span>
+                        <span style="color:var(--bright-gold);font-weight:600;">×${i.quantity}</span>
+                    </div>`
+                ).join('');
+
+                const isCooking = o.status === 'IN_KITCHEN';
+                const statusColor = isCooking ? '#f97316' : '#3b82f6';
+                const statusText = isCooking ? '🔥 COOKING' : '⏳ IN QUEUE';
+
+                // Timer
+                let timerHTML = '';
+                let actionBtn = '';
+
+                if (isCooking && o.cook_started_at) {
+                    timerHTML = `<div class="kitchen-timer" data-start="${o.cook_started_at}">00:00</div>`;
+                    actionBtn = `<button class="act-btn act-ready" onclick="updateKitchenStatus('${o.id}','READY')">✅ Mark Ready</button>`;
+                } else if (isCooking) {
+                    timerHTML = `<div class="kitchen-timer">00:00</div>`;
+                    actionBtn = `<button class="act-btn act-ready" onclick="updateKitchenStatus('${o.id}','READY')">✅ Mark Ready</button>`;
+                } else {
+                    actionBtn = `<button class="act-btn act-cook" onclick="updateKitchenStatus('${o.id}','IN_KITCHEN')">🔥 Start Cooking</button>`;
+                }
+
+                return `
+                    <div class="card">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+                            <div>
+                                <h3 style="font-size:.95rem;color:var(--gold);">#${o.order_code}</h3>
+                                <div style="font-size:.72rem;color:var(--muted);">${timeAgo(o.created_at)} · ${o.type === 'delivery' ? '🛵 Delivery' : '🪑 Table ' + (o.table_number || '?')}</div>
+                            </div>
+                            <span class="badge" style="background:${statusColor}20;color:${statusColor};">${statusText}</span>
+                        </div>
+                        <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
+                            ${items}
+                        </div>
+                        ${timerHTML}
+                        ${actionBtn}
+                    </div>`;
+            }).join('');
         }
 
-        function startCooking(id) {
-            const o = allOrders.find(x => x.orderId === id);
-            if (o) {
-                o.status = 'IN_KITCHEN';
-                o.cookStart = Date.now();
-                safeSetJSON('bvr_all_orders', allOrders);
-                // Sync current order
-                const currentOrder = safeGetJSON('bvr_current_order', null);
-                if (currentOrder && currentOrder.orderId === id) {
-                    currentOrder.status = 'IN_KITCHEN';
-                    currentOrder.cookStart = o.cookStart;
-                    safeSetJSON('bvr_current_order', currentOrder);
+        // ========== STATUS UPDATE ==========
+        async function updateKitchenStatus(orderId, newStatus) {
+            const updateData = { status: newStatus };
+            if (newStatus === 'IN_KITCHEN') {
+                updateData.cook_started_at = new Date().toISOString();
+            }
+
+            try {
+                const { error } = await db
+                    .from('orders')
+                    .update(updateData)
+                    .eq('id', orderId);
+
+                if (error) {
+                    showToast('Update failed', 'error');
+                    console.error('[BVR] Kitchen update error:', error);
+                    return;
                 }
-                renderKitchen();
-                showToast(`🔥 Cooking #${id}`);
-                console.log('[BVR] Started cooking:', id);
+
+                const msg = newStatus === 'IN_KITCHEN' ? '🔥 Cooking started!' : '✅ Marked as ready!';
+                showToast(msg);
+
+                // Force re-render
+                lastKitchenState = '';
+                await loadKitchenOrders();
+
+            } catch (err) {
+                console.error('[BVR] Network error:', err);
+                showToast('Network error. Try again.', 'error');
             }
         }
 
-        function markReady(id) {
-            const o = allOrders.find(x => x.orderId === id);
-            if (o) {
-                o.status = 'READY';
-                safeSetJSON('bvr_all_orders', allOrders);
-                // Sync current order
-                const currentOrder = safeGetJSON('bvr_current_order', null);
-                if (currentOrder && currentOrder.orderId === id) {
-                    currentOrder.status = 'READY';
-                    safeSetJSON('bvr_current_order', currentOrder);
+        // ========== TIMER ==========
+        function updateTimers() {
+            document.querySelectorAll('.kitchen-timer[data-start]').forEach(el => {
+                const start = new Date(el.dataset.start).getTime();
+                const elapsed = Math.floor((Date.now() - start) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                el.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+                // Warning after 15 minutes
+                if (elapsed > 900) {
+                    el.classList.add('timer-warning');
+                } else {
+                    el.classList.remove('timer-warning');
                 }
-                renderKitchen();
-                showToast(`✅ #${id} is ready!`);
-                console.log('[BVR] Marked ready:', id);
-            }
+            });
         }
 
         function updateStats() {
-            const kitchenOrders = getKitchenOrders();
-            document.getElementById('kPending').textContent = allOrders.filter(o => o.status === 'CONFIRMED').length;
-            document.getElementById('kProgress').textContent = allOrders.filter(o => o.status === 'IN_KITCHEN').length;
-            document.getElementById('kReady').textContent = allOrders.filter(o => o.status === 'READY').length;
+            const queue = kitchenOrders.filter(o => o.status === 'CONFIRMED').length;
+            const cooking = kitchenOrders.filter(o => o.status === 'IN_KITCHEN').length;
+
+            document.getElementById('countQueue').textContent = queue;
+            document.getElementById('countCooking').textContent = cooking;
+
+            // For "Ready" count, we need a separate query or we just show 0
+            // Since kitchen view focuses on CONFIRMED + IN_KITCHEN, we can show ready separately
+            document.getElementById('countReady').textContent = '-';
         }
 
-        function updateTimers() {
-            allOrders.filter(o => o.status === 'IN_KITCHEN' && o.cookStart).forEach(o => {
-                const el = document.getElementById('timer_' + o.orderId);
-                if (el) {
-                    const elapsed = Math.floor((Date.now() - o.cookStart) / 1000);
-                    const mins = Math.floor(elapsed / 60);
-                    const secs = elapsed % 60;
-                    el.textContent = `⏱ ${mins}:${secs.toString().padStart(2, '0')}`;
-                }
-            });
-        }
-
-        // Clock
-        function updateClock() {
-            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+        // Also count ready orders for stats
+        async function loadReadyCount() {
+            try {
+                const { count } = await db
+                    .from('orders')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'READY');
+                document.getElementById('countReady').textContent = count || 0;
+            } catch (e) { /* silent */ }
         }
 
         // ========== AUTO REFRESH ==========
         setInterval(() => {
             if (localStorage.getItem('bvr_kitchen_auth') === 'true') {
-                const fresh = safeGetJSON('bvr_all_orders', []);
-                // Preserve cookStart timers from current in-memory orders
-                fresh.forEach(fo => {
-                    const existing = allOrders.find(ao => ao.orderId === fo.orderId);
-                    if (existing && existing.cookStart && !fo.cookStart) {
-                        fo.cookStart = existing.cookStart;
-                    }
-                });
-                allOrders = fresh;
-                // Smart diff: only re-render if order IDs or statuses changed
-                const currentSnapshot = getKitchenOrders().map(o => o.orderId + ':' + o.status).join(',');
-                if (currentSnapshot !== renderedOrderSnapshot) {
-                    renderKitchen(); // renderKitchen updates the snapshot
-                } else {
-                    updateTimers(); // just tick timers, no DOM rebuild
-                    updateStats();
-                }
+                loadKitchenOrders();
+                loadReadyCount();
             }
         }, 10000);
 
+        // Timer tick every second
         setInterval(updateTimers, 1000);
-        setInterval(updateClock, 1000);
-        updateClock();
 
         // ========== INIT ==========
-        checkKitchenAuth();
+        if (localStorage.getItem('bvr_kitchen_auth') === 'true') {
+            document.getElementById('passwordOverlay').style.display = 'none';
+            loadKitchenOrders();
+            loadReadyCount();
+        }
         console.log('[BVR] Kitchen dashboard loaded');
     </script>
 </body>
