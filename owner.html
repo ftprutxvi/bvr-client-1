@@ -280,6 +280,127 @@
         .pulse-gold {
             animation: pulseGold 1s ease-out;
         }
+
+        /* Owner tabs */
+        .owner-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+        }
+        .owner-tab {
+            flex: 1;
+            padding: 12px 16px;
+            text-align: center;
+            cursor: pointer;
+            font-size: .88rem;
+            font-weight: 600;
+            background: transparent;
+            color: var(--muted);
+            border: none;
+            transition: all .2s;
+            font-family: 'Poppins', sans-serif;
+        }
+        .owner-tab.active {
+            background: linear-gradient(135deg, #d4a017, #f5c842);
+            color: #0a0500;
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: #3a2010;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .toggle-slider:before {
+            content: '';
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: #888;
+            border-radius: 50%;
+            transition: all .3s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: #22c55e30;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+            background: #22c55e;
+        }
+
+        /* Menu item row */
+        .menu-item-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #d4a01715;
+        }
+        .menu-item-row:last-child {
+            border-bottom: none;
+        }
+        .menu-item-thumb {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #d4a017, #f5c842);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .menu-item-thumb img {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+        .availability-bar {
+            display: flex;
+            gap: 16px;
+            padding: 10px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: .85rem;
+            justify-content: center;
+        }
+        .availability-bar .avail-count {
+            font-weight: 700;
+        }
+
+        /* Menu cat filter */
+        .menu-cat-wrap {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 0 0 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .menu-cat-wrap::-webkit-scrollbar { display: none; }
     </style>
 </head>
 
@@ -308,6 +429,15 @@
     </nav>
 
     <main style="padding:80px 16px 32px;max-width:800px;margin:auto;">
+
+        <!-- OWNER TABS -->
+        <div class="owner-tabs">
+            <button class="owner-tab active" id="tabOrders" onclick="switchOwnerTab('orders')">📋 Orders</button>
+            <button class="owner-tab" id="tabMenu" onclick="switchOwnerTab('menu')">🍽️ Menu</button>
+        </div>
+
+        <!-- ========== ORDERS TAB ========== -->
+        <div id="ordersTab">
 
         <!-- STATS -->
         <div class="stats-grid">
@@ -365,6 +495,22 @@
         <p style="text-align:center;color:var(--muted);font-size:.75rem;margin-top:16px;">
             🔄 Auto-refreshes every 10 seconds
         </p>
+
+        </div><!-- end ordersTab -->
+
+        <!-- ========== MENU TAB ========== -->
+        <div id="menuTab" style="display:none;">
+            <div class="availability-bar" id="availabilityBar">
+                <span>✅ Available: <span class="avail-count" id="availCount">0</span></span>
+                <span>❌ Unavailable: <span class="avail-count" id="unavailCount">0</span></span>
+            </div>
+            <div class="menu-cat-wrap" id="menuCatWrap">
+                <button class="filter-btn active" data-mcat="all" onclick="setMenuCatFilter('all')">All</button>
+            </div>
+            <div id="menuItemsList">
+                <div class="card"><div class="skeleton-box" style="height:60px;width:100%;"></div></div>
+            </div>
+        </div><!-- end menuTab -->
 
     </main>
 
@@ -703,6 +849,130 @@
                 document.title = 'BVR Owner Dashboard';
             }
             prevNewCount = newCount;
+        }
+
+        // ========== OWNER TABS ==========
+        function switchOwnerTab(tab) {
+            document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
+            document.getElementById('menuTab').style.display = tab === 'menu' ? 'block' : 'none';
+            document.getElementById('tabOrders').classList.toggle('active', tab === 'orders');
+            document.getElementById('tabMenu').classList.toggle('active', tab === 'menu');
+            if (tab === 'menu') loadMenuManagement();
+        }
+
+        // ========== MENU MANAGEMENT (Feature 2) ==========
+        let managedItems = [];
+        let menuCatFilter = 'all';
+
+        async function loadMenuManagement() {
+            try {
+                const { data: items, error } = await db
+                    .from('menu_items')
+                    .select('*, menu_categories(name)')
+                    .order('category_id');
+
+                if (error) {
+                    showToast('Failed to load menu', 'error');
+                    return;
+                }
+
+                managedItems = items || [];
+                renderMenuCatTabs();
+                renderMenuItems();
+                updateAvailability();
+            } catch (err) {
+                showToast('Network error loading menu', 'error');
+            }
+        }
+
+        function renderMenuCatTabs() {
+            const wrap = document.getElementById('menuCatWrap');
+            const cats = [...new Set(managedItems.map(i => i.menu_categories?.name).filter(Boolean))];
+            let html = `<button class="filter-btn ${menuCatFilter === 'all' ? 'active' : ''}" data-mcat="all" onclick="setMenuCatFilter('all')">All (${managedItems.length})</button>`;
+            cats.forEach(cat => {
+                const count = managedItems.filter(i => i.menu_categories?.name === cat).length;
+                const active = menuCatFilter === cat ? 'active' : '';
+                html += `<button class="filter-btn ${active}" data-mcat="${cat}" onclick="setMenuCatFilter('${cat}')">${cat} (${count})</button>`;
+            });
+            wrap.innerHTML = html;
+        }
+
+        function setMenuCatFilter(cat) {
+            menuCatFilter = cat;
+            renderMenuCatTabs();
+            renderMenuItems();
+        }
+
+        function renderMenuItems() {
+            const container = document.getElementById('menuItemsList');
+            let items = menuCatFilter === 'all' ? managedItems : managedItems.filter(i => i.menu_categories?.name === menuCatFilter);
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="card" style="text-align:center;padding:30px;color:var(--muted);">No items found</div>';
+                return;
+            }
+
+            container.innerHTML = '<div class="card" style="padding:8px 16px;">' + items.map(item => {
+                const catName = item.menu_categories?.name || 'Other';
+                const imgHtml = item.image_url
+                    ? `<div class="menu-item-thumb"><img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML='🍽️';"></div>`
+                    : `<div class="menu-item-thumb">🍽️</div>`;
+
+                const checked = item.is_available ? 'checked' : '';
+                const statusDot = item.is_available
+                    ? '<span style="color:#22c55e;font-size:.78rem;">● Available</span>'
+                    : '<span style="color:#ef4444;font-size:.78rem;">● Unavailable</span>';
+
+                return `
+                    <div class="menu-item-row">
+                        ${imgHtml}
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>
+                            <div style="font-size:.75rem;color:var(--muted);">${catName}</div>
+                            ${statusDot}
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                            <span style="font-weight:700;color:var(--bright-gold);font-size:.9rem;">₹${item.price}</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${checked} onchange="toggleItem('${item.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>`;
+            }).join('') + '</div>';
+        }
+
+        async function toggleItem(itemId, newValue) {
+            try {
+                const { error } = await db
+                    .from('menu_items')
+                    .update({ is_available: newValue })
+                    .eq('id', itemId);
+
+                if (error) {
+                    showToast('Update failed', 'error');
+                    loadMenuManagement();
+                    return;
+                }
+
+                const item = managedItems.find(i => i.id === itemId);
+                if (item) item.is_available = newValue;
+
+                const msg = newValue ? 'Marked Available ✅' : 'Marked Unavailable ❌';
+                showToast(msg, newValue ? 'success' : 'info');
+                updateAvailability();
+
+            } catch (err) {
+                showToast('Network error', 'error');
+                loadMenuManagement();
+            }
+        }
+
+        function updateAvailability() {
+            const avail = managedItems.filter(i => i.is_available).length;
+            const unavail = managedItems.length - avail;
+            document.getElementById('availCount').textContent = avail;
+            document.getElementById('unavailCount').textContent = unavail;
         }
 
         // ========== AUTO REFRESH ==========

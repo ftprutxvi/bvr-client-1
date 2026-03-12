@@ -290,6 +290,24 @@
             transform: translateY(-1px);
         }
         .add-btn:active { transform: scale(.97); }
+        .add-btn:disabled, .qty-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Closed banner */
+        .closed-banner {
+            background: #1a0000;
+            border-bottom: 2px solid #ef4444;
+            color: #fca5a5;
+            padding: 14px 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-family: 'Poppins', sans-serif;
+            display: none;
+        }
 
         /* Qty counter */
         .qty-row {
@@ -442,8 +460,11 @@
         </div>
     </nav>
 
+    <!-- ===== CLOSED BANNER ===== -->
+    <div class="closed-banner" id="closedBanner" style="margin-top:64px;"></div>
+
     <!-- ===== CATEGORY TABS ===== -->
-    <div class="tabs-wrap" id="tabsWrap" style="margin-top:64px;">
+    <div class="tabs-wrap" id="tabsWrap">
         <button class="tab-btn active" data-cat="all">All</button>
     </div>
 
@@ -824,11 +845,72 @@
         prevCartCount = total;
     }
 
+    // ========== TIMING RESTRICTION (11AM - 11PM IST) ==========
+    function isRestaurantOpen() {
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const ist = new Date(utc + (5.5 * 3600000));
+        const totalMins = ist.getHours() * 60 + ist.getMinutes();
+        return totalMins >= 660 && totalMins < 1380;
+    }
+
+    function getOpenMessage() {
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const ist = new Date(utc + (5.5 * 3600000));
+        return ist.getHours() < 11
+            ? 'Opens today at 11:00 AM'
+            : 'Opens tomorrow at 11:00 AM';
+    }
+
+    let wasOpen = null;
+
+    function checkOpenStatus() {
+        const open = isRestaurantOpen();
+        const banner = document.getElementById('closedBanner');
+        const tabsWrap = document.getElementById('tabsWrap');
+
+        if (!open) {
+            banner.style.display = 'block';
+            banner.textContent = `🔴 We're currently closed · Orders accepted 11 AM – 11 PM IST · ${getOpenMessage()}`;
+            tabsWrap.style.marginTop = '0';
+            disableOrdering();
+        } else {
+            banner.style.display = 'none';
+            tabsWrap.style.marginTop = '64px';
+            enableOrdering();
+            if (wasOpen === false) {
+                showToast('🟢 We\'re open! Start ordering.');
+            }
+        }
+        wasOpen = open;
+    }
+
+    function disableOrdering() {
+        document.querySelectorAll('.add-btn').forEach(btn => {
+            btn.disabled = true;
+            btn.textContent = 'Closed';
+        });
+        document.querySelectorAll('.qty-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+        const floatCart = document.getElementById('floatCart');
+        if (floatCart) floatCart.classList.remove('visible');
+    }
+
+    function enableOrdering() {
+        // Re-render menu to restore button states
+        if (menuItems.length > 0) renderMenu();
+    }
+
     // ========== INIT ==========
     document.addEventListener('DOMContentLoaded', () => {
         cart = safeGetJSON('bvr_cart', []);
         updateCartUI();
-        loadMenu();
+        loadMenu().then(() => {
+            checkOpenStatus();
+            setInterval(checkOpenStatus, 60000);
+        });
     });
     </script>
 </body>
