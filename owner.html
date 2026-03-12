@@ -401,6 +401,90 @@
             -webkit-overflow-scrolling: touch;
         }
         .menu-cat-wrap::-webkit-scrollbar { display: none; }
+
+        /* Reject modal */
+        .reject-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .75);
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .reject-overlay.open {
+            display: flex;
+        }
+        .reject-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 28px;
+            max-width: 360px;
+            width: 100%;
+        }
+        .reject-box h3 {
+            color: var(--red);
+            font-size: 1.05rem;
+            margin-bottom: 16px;
+        }
+        .reason-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all .2s;
+            font-size: .88rem;
+            background: transparent;
+            color: var(--text);
+        }
+        .reason-option:hover {
+            border-color: var(--gold);
+            background: #d4a01708;
+        }
+        .reason-option.selected {
+            border-color: var(--red);
+            background: #ef444415;
+        }
+        .reason-option input[type="radio"] {
+            accent-color: var(--red);
+            width: 16px;
+            height: 16px;
+        }
+        .reject-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .reject-actions button {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: none;
+            font-size: .88rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            min-height: 44px;
+            transition: all .2s;
+        }
+        .reject-cancel-btn {
+            background: #d4a01720;
+            color: var(--gold);
+        }
+        .reject-confirm-btn {
+            background: var(--red);
+            color: #fff;
+        }
+        .reject-confirm-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
@@ -513,6 +597,30 @@
         </div><!-- end menuTab -->
 
     </main>
+
+    <!-- REJECT MODAL -->
+    <div class="reject-overlay" id="rejectOverlay">
+        <div class="reject-box">
+            <h3>❌ Reject this order?</h3>
+            <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Select a reason:</p>
+            <label class="reason-option" onclick="selectReason(this, 'Outside delivery area')">
+                <input type="radio" name="rejectReason" value="Outside delivery area"> Outside delivery area
+            </label>
+            <label class="reason-option" onclick="selectReason(this, 'Address not clear')">
+                <input type="radio" name="rejectReason" value="Address not clear"> Address not clear
+            </label>
+            <label class="reason-option" onclick="selectReason(this, 'Delivery not available now')">
+                <input type="radio" name="rejectReason" value="Delivery not available now"> Delivery not available now
+            </label>
+            <label class="reason-option" onclick="selectReason(this, 'Other')">
+                <input type="radio" name="rejectReason" value="Other"> Other
+            </label>
+            <div class="reject-actions">
+                <button class="reject-cancel-btn" onclick="closeRejectModal()">Cancel</button>
+                <button class="reject-confirm-btn" id="confirmRejectBtn" disabled onclick="confirmReject()">Confirm Reject</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ========== SUPABASE INIT ==========
@@ -681,7 +789,13 @@
 
                 // Actions
                 let actions = '';
-                if (o.status === 'NEW') {
+                if (o.status === 'NEW' && o.type === 'delivery') {
+                    actions = `
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="act-btn act-confirm" onclick="updateStatus('${o.id}','CONFIRMED')" style="min-height:44px;">✅ Accept & Confirm</button>
+                            <button class="act-btn act-danger" onclick="openRejectModal('${o.id}')" style="min-height:44px;">❌ Reject Order</button>
+                        </div>`;
+                } else if (o.status === 'NEW') {
                     actions = `
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <button class="act-btn act-confirm" onclick="updateStatus('${o.id}','CONFIRMED')">✅ Confirm</button>
@@ -715,7 +829,11 @@
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                             <div>
                                 <h3 style="font-size:.95rem;color:var(--gold);">#${o.order_code}</h3>
-                                <div style="font-size:.75rem;color:var(--muted);">${timeAgo(o.created_at)} · ${o.type === 'delivery' ? '🛵 Delivery' : '🪑 Table ' + (o.table_number || '?')}</div>
+                                <div style="font-size:.75rem;color:var(--muted);">${timeAgo(o.created_at)}</div>
+                                ${o.type === 'delivery'
+                                    ? '<span style="display:inline-block;padding:3px 10px;border-radius:9999px;font-size:.7rem;font-weight:600;background:#f9731625;color:#f97316;margin-top:4px;">🛵 DELIVERY</span>'
+                                    : `<span style="display:inline-block;padding:3px 10px;border-radius:9999px;font-size:.7rem;font-weight:600;background:#d4a01720;color:#d4a017;margin-top:4px;">🪑 Table ${o.table_number || '?'}</span>`
+                                }
                             </div>
                             <div style="text-align:right;">
                                 ${statusBadge}
@@ -723,8 +841,9 @@
                             </div>
                         </div>
                         <div style="font-size:.8rem;color:var(--muted);margin-bottom:6px;">👤 ${o.customer_name} · 📞 ${o.customer_phone}</div>
-                        <div style="font-size:.78rem;color:var(--text);margin-bottom:10px;opacity:.7;">${items || 'No items'}</div>
-                        ${o.delivery_address ? `<div style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">📍 ${o.delivery_address}</div>` : ''}
+                        <div style="font-size:.78rem;color:var(--text);margin-bottom:${o.delivery_address ? '6' : '10'}px;opacity:.7;">${items || 'No items'}</div>
+                        ${o.delivery_address ? `<div style="font-size:.9rem;color:var(--muted);margin-bottom:10px;">📍 ${o.delivery_address}</div>` : ''}
+                        ${o.status === 'CANCELLED' && o.rejection_reason ? `<div style="font-size:.78rem;color:#fca5a5;margin-bottom:10px;background:#ef444410;padding:6px 10px;border-radius:8px;">Reason: ${o.rejection_reason}</div>` : ''}
                         ${actions}
                     </div>`;
             }).join('');
@@ -759,13 +878,79 @@
                     return;
                 }
 
-                showToast('Order updated ✅');
+                if (newStatus === 'CONFIRMED') {
+                    showToast('Order accepted! Sent to kitchen. ✅');
+                } else {
+                    showToast('Order updated ✅');
+                }
                 console.log('[BVR] Order', orderId, '→', newStatus);
                 await loadOrders();
 
             } catch (err) {
                 console.error('[BVR] Network error:', err);
                 showToast('Network error. Try again.', 'error');
+            }
+        }
+
+        // ========== REJECT ORDER WITH REASON ==========
+        let rejectingOrderId = null;
+        let selectedReason = '';
+
+        function openRejectModal(orderId) {
+            rejectingOrderId = orderId;
+            selectedReason = '';
+            document.getElementById('confirmRejectBtn').disabled = true;
+            document.querySelectorAll('.reason-option').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('input[name="rejectReason"]').forEach(r => r.checked = false);
+            document.getElementById('rejectOverlay').classList.add('open');
+        }
+
+        function closeRejectModal() {
+            document.getElementById('rejectOverlay').classList.remove('open');
+            rejectingOrderId = null;
+            selectedReason = '';
+        }
+
+        function selectReason(el, reason) {
+            selectedReason = reason;
+            document.querySelectorAll('.reason-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('confirmRejectBtn').disabled = false;
+        }
+
+        async function confirmReject() {
+            if (!rejectingOrderId || !selectedReason) return;
+
+            const btn = document.getElementById('confirmRejectBtn');
+            btn.disabled = true;
+            btn.textContent = 'Rejecting...';
+
+            try {
+                const { error } = await db
+                    .from('orders')
+                    .update({
+                        status: 'CANCELLED',
+                        rejection_reason: selectedReason
+                    })
+                    .eq('id', rejectingOrderId);
+
+                if (error) {
+                    showToast('Failed to reject order', 'error');
+                    console.error('[BVR] Reject error:', error);
+                    btn.disabled = false;
+                    btn.textContent = 'Confirm Reject';
+                    return;
+                }
+
+                showToast('Order rejected ❌', 'info');
+                closeRejectModal();
+                await loadOrders();
+
+            } catch (err) {
+                console.error('[BVR] Network error:', err);
+                showToast('Network error. Try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Confirm Reject';
             }
         }
 

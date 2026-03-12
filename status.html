@@ -235,6 +235,61 @@
                 background-position: 200% 0;
             }
         }
+
+        /* Rejected/Cancelled card */
+        .rejected-card {
+            background: #1a0000;
+            border: 1px solid #ef4444;
+            border-radius: 1rem;
+            padding: 28px 20px;
+            text-align: center;
+        }
+        .rejected-card .rejected-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+        .rejected-card h3 {
+            color: #ef4444;
+            font-size: 1.15rem;
+            margin-bottom: 12px;
+        }
+        .rejected-card .reason-text {
+            color: #fca5a5;
+            font-size: .92rem;
+            margin-bottom: 16px;
+            padding: 10px 14px;
+            background: #ef444415;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .rejected-card .refund-note {
+            color: var(--muted);
+            font-size: .82rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .rejected-card .back-btn {
+            background: linear-gradient(135deg, #d4a017, #f5c842);
+            color: #1a0e00;
+            font-weight: 700;
+            border-radius: 9999px;
+            min-height: 48px;
+            padding: 12px 24px;
+            border: none;
+            cursor: pointer;
+            transition: all .2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: .95rem;
+            font-family: 'Poppins', sans-serif;
+            text-decoration: none;
+        }
+        .rejected-card .back-btn:hover {
+            box-shadow: 0 0 25px #d4a01780;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 
@@ -434,6 +489,11 @@
                     document.getElementById('deliveryCard').style.display = 'none';
                 }
 
+                // Hide items and delivery card if cancelled
+                if (order.status === 'CANCELLED') {
+                    document.getElementById('deliveryCard').style.display = 'none';
+                }
+
                 lastStatus = order.status;
                 lastRefresh = Date.now();
                 console.log('[BVR] Status rendered:', order.status);
@@ -458,7 +518,14 @@
             }
 
             document.getElementById('orderTime').textContent = formatTime(order.created_at);
-            document.getElementById('orderTotal').textContent = formatPrice(order.total) + ' ✅';
+
+            if (order.status === 'CANCELLED') {
+                document.getElementById('orderTotal').textContent = formatPrice(order.total) + ' ❌';
+                document.getElementById('orderTotal').style.color = '#ef4444';
+            } else {
+                document.getElementById('orderTotal').textContent = formatPrice(order.total) + ' ✅';
+                document.getElementById('orderTotal').style.color = 'var(--green)';
+            }
             document.getElementById('orderDetail').textContent =
                 order.type === 'delivery'
                     ? (order.delivery_address || 'Delivery') + ' · Paid via UPI'
@@ -466,10 +533,27 @@
         }
 
         function renderStatusTracker(order) {
+            const stepper = document.getElementById('statusStepper');
+
+            // Special handling for CANCELLED orders
+            if (order.status === 'CANCELLED') {
+                const reason = order.rejection_reason || 'Order could not be fulfilled';
+                stepper.innerHTML = `
+                    <div class="rejected-card">
+                        <div class="rejected-icon">❌</div>
+                        <h3>Order Rejected</h3>
+                        <div class="reason-text">${reason}</div>
+                        <p class="refund-note">
+                            We're sorry! Your payment will be<br>refunded within 24-48 hours.
+                        </p>
+                        <a href="index.html" class="back-btn">🏠 Back to Menu</a>
+                    </div>`;
+                return;
+            }
+
             const steps = order.type === 'delivery' ? STATUS_STEPS_DELIVERY : STATUS_STEPS_DINEIN;
             const currentIdx = steps.indexOf(order.status);
 
-            const stepper = document.getElementById('statusStepper');
             stepper.innerHTML = steps.map((step, i) => {
                 let cls = 'pending', icon = STATUS_ICONS.pending, timeStr = '—';
                 if (i < currentIdx) {

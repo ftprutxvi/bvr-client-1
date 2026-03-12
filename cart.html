@@ -261,57 +261,6 @@
             font-family: 'Poppins', sans-serif;
             display: none;
         }
-
-        /* Delivery check result boxes */
-        .delivery-result {
-            margin-top: 10px;
-            padding: 12px 14px;
-            border-radius: 12px;
-            font-size: .85rem;
-            display: none;
-        }
-        .delivery-result.success {
-            background: #22c55e15;
-            border: 1px solid #22c55e40;
-            color: #22c55e;
-        }
-        .delivery-result.error {
-            background: #ef444415;
-            border: 1px solid #ef444440;
-            color: #fca5a5;
-        }
-        .delivery-result.warning {
-            background: #f9731615;
-            border: 1px solid #f9731640;
-            color: #fb923c;
-        }
-        .check-btn {
-            width: 100%;
-            padding: 10px 16px;
-            border-radius: 12px;
-            border: 1px dashed var(--border);
-            background: transparent;
-            color: var(--gold);
-            font-size: .88rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all .2s;
-            font-family: 'Poppins', sans-serif;
-            margin-top: 8px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .check-btn:hover {
-            border-color: var(--gold);
-            background: #d4a01710;
-        }
-        .check-btn:disabled {
-            opacity: .5;
-            cursor: not-allowed;
-        }
     </style>
 </head>
 
@@ -387,10 +336,6 @@
                                 <label class="label">Delivery Address</label>
                                 <textarea class="input-field" id="address"
                                     placeholder="Enter your full address"></textarea>
-                                <button type="button" class="check-btn" id="checkDeliveryBtn" onclick="checkDelivery()">
-                                    📍 Check if we deliver here →
-                                </button>
-                                <div class="delivery-result" id="deliveryResult"></div>
                             </div>
                             <div>
                                 <label class="label">Landmark (optional)</label>
@@ -615,7 +560,6 @@
             } else {
                 const address = document.getElementById('address').value.trim();
                 if (!address || address.length < 10) { showError('Please enter a valid delivery address (min 10 chars)'); highlightField('address'); return; }
-                if (!addressVerified) { showToast('Please check your delivery address first', 'error'); highlightField('address'); return; }
             }
             if (!name) { showError('Please enter your name'); highlightField('customerName'); return; }
             if (!phone || !/^\d{10}$/.test(phone)) { showError('Please enter a valid 10-digit phone number'); highlightField('customerPhone'); return; }
@@ -692,99 +636,6 @@
                 setPayButtonLoading(false);
             }
         }
-
-        // ========== 6KM DELIVERY RADIUS CHECK ==========
-        const RESTAURANT_LAT = 17.0576;
-        const RESTAURANT_LNG = 79.2671;
-        const MAX_DELIVERY_KM = 6;
-        let addressVerified = false;
-
-        function getDistanceKm(lat1, lng1, lat2, lng2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        }
-
-        async function checkDeliveryAddress(address) {
-            const query = encodeURIComponent(address + ', Nalgonda, Telangana, India');
-            const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=in`;
-            try {
-                await new Promise(r => setTimeout(r, 1000));
-                const response = await fetch(url, {
-                    headers: { 'Accept-Language': 'en', 'User-Agent': 'BVR-Restaurant-App/1.0' }
-                });
-                const data = await response.json();
-                if (!data || data.length === 0) {
-                    return { found: false, message: 'Address not found. Try being more specific. Example: "Near Bus Stand, Nalgonda"' };
-                }
-                const lat = parseFloat(data[0].lat);
-                const lng = parseFloat(data[0].lon);
-                const distance = getDistanceKm(RESTAURANT_LAT, RESTAURANT_LNG, lat, lng);
-                return { found: true, lat, lng, distance };
-            } catch (err) {
-                return { found: false, error: true };
-            }
-        }
-
-        async function checkDelivery() {
-            const addressEl = document.getElementById('address');
-            const addr = addressEl.value.trim();
-            const resultEl = document.getElementById('deliveryResult');
-            const checkBtn = document.getElementById('checkDeliveryBtn');
-
-            if (!addr || addr.length < 10) {
-                showToast('Enter a more detailed address', 'error');
-                addressEl.style.borderColor = 'var(--red)';
-                return;
-            }
-
-            checkBtn.disabled = true;
-            checkBtn.innerHTML = '<div class="spinner" style="width:18px;height:18px;margin:0;border-width:2px;"></div> Checking...';
-
-            const result = await checkDeliveryAddress(addr);
-
-            checkBtn.disabled = false;
-            checkBtn.innerHTML = '📍 Check if we deliver here →';
-
-            if (result.error) {
-                resultEl.className = 'delivery-result warning';
-                resultEl.style.display = 'block';
-                resultEl.innerHTML = `⚠️ Could not verify address automatically.<br>Make sure you are within 6km of Shivaji Nagar Circle, Nalgonda.<br><span style="font-size:.78rem;">Orders outside range will be cancelled.</span>`;
-                addressEl.style.borderColor = '#f97316';
-                addressVerified = true;
-            } else if (!result.found) {
-                resultEl.className = 'delivery-result error';
-                resultEl.style.display = 'block';
-                resultEl.innerHTML = `❌ ${result.message}`;
-                addressEl.style.borderColor = 'var(--red)';
-                addressVerified = false;
-            } else if (result.distance <= MAX_DELIVERY_KM) {
-                const estTime = result.distance <= 3 ? '25-35 mins' : '30-45 mins';
-                resultEl.className = 'delivery-result success';
-                resultEl.style.display = 'block';
-                resultEl.innerHTML = `✅ We deliver to your area!<br>📍 Distance: ${result.distance.toFixed(1)} km<br>🕐 Estimated delivery: ${estTime}`;
-                addressEl.style.borderColor = 'var(--green)';
-                addressVerified = true;
-            } else {
-                resultEl.className = 'delivery-result error';
-                resultEl.style.display = 'block';
-                resultEl.innerHTML = `❌ Outside our delivery zone<br>📍 Your distance: ${result.distance.toFixed(1)} km<br>🛵 We deliver within 6km only of Shivaji Nagar Circle, Nalgonda`;
-                addressEl.style.borderColor = 'var(--red)';
-                addressVerified = false;
-            }
-        }
-
-        // Reset verification when address is edited
-        document.getElementById('address').addEventListener('input', () => {
-            addressVerified = false;
-            const resultEl = document.getElementById('deliveryResult');
-            resultEl.style.display = 'none';
-            document.getElementById('address').style.borderColor = '';
-        });
 
         // ========== TIMING RESTRICTION (11AM - 11PM IST) ==========
         function isRestaurantOpen() {
