@@ -304,9 +304,21 @@
         </div>
     </nav>
 
-    <main style="padding:80px 16px 32px;max-width:600px;margin:auto;">
+    310
+    style="padding:80px 16px 32px;max-width:600px;margin:auto;">
 
         <!-- ORDER INFO CARD -->
+
+      <!-- PHONE LOOKUP CARD (hidden by default) -->
+  <div id="phoneLookupCard" style="display:none;background:#1a0e00;border:1px solid #d4a01740;padding:24px;border-radius:16px;margin:24px auto;max-width:400px;text-align:center;">
+    <h2 style="color:#f5c842;font-family:'Playfair Display',serif;margin-bottom:12px;">🔍 Find Your Order</h2>
+    <p style="color:#f5e6c8;font-size:0.9rem;margin-bottom:20px;">Lost your status? Enter the phone number used to place your order.</p>
+    <input type="tel" class="input-field" id="lookupPhone" placeholder="10-digit phone number" maxlength="10" style="flex:1;">
+    <button onclick="lookupByPhone()" class="btn-gold" style="margin-top:12px;">🔍 Find</button>
+    <div id="lookupError" style="color:#ef4444;font-size:0.85rem;margin-top:10px;display:none;"></div>
+    <a href="menu.html" style="display:block;margin-top:20px;color:#d4a017;text-decoration:none;">🍽️ Order More</a>
+  </div>
+
         <div class="card" style="margin-bottom:16px;" id="orderInfoCard">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
                 <div>
